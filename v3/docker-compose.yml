@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for Users
+  postgres-users:
+    image: postgres:14-alpine
+    container_name: beenzer-postgres-users
+    environment:
+      POSTGRES_DB: beenzer_users
+      POSTGRES_USER: beenzer
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-beenzer_password}
+    volumes:
+      - postgres-users-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beenzer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL for Messages
+  postgres-messages:
+    image: postgres:14-alpine
+    container_name: beenzer-postgres-messages
+    environment:
+      POSTGRES_DB: beenzer_messages
+      POSTGRES_USER: beenzer
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-beenzer_password}
+    volumes:
+      - postgres-messages-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beenzer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL for NFTs
+  postgres-nfts:
+    image: postgres:14-alpine
+    container_name: beenzer-postgres-nfts
+    environment:
+      POSTGRES_DB: beenzer_nfts
+      POSTGRES_USER: beenzer
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-beenzer_password}
+    volumes:
+      - postgres-nfts-data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beenzer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL for Tokens
+  postgres-tokens:
+    image: postgres:14-alpine
+    container_name: beenzer-postgres-tokens
+    environment:
+      POSTGRES_DB: beenzer_tokens
+      POSTGRES_USER: beenzer
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-beenzer_password}
+    volumes:
+      - postgres-tokens-data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beenzer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Beenzer Server v3
+  beenzer-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: beenzer-server-v3
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      GO_ENV: production
+      USERS_DB_URL: postgresql://beenzer:${DB_PASSWORD:-beenzer_password}@postgres-users:5432/beenzer_users?sslmode=disable
+      MESSAGES_DB_URL: postgresql://beenzer:${DB_PASSWORD:-beenzer_password}@postgres-messages:5432/beenzer_messages?sslmode=disable
+      NFTS_DB_URL: postgresql://beenzer:${DB_PASSWORD:-beenzer_password}@postgres-nfts:5432/beenzer_nfts?sslmode=disable
+      TOKEN_DB_URL: postgresql://beenzer:${DB_PASSWORD:-beenzer_password}@postgres-tokens:5432/beenzer_tokens?sslmode=disable
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-https://api.devnet.solana.com}
+      MASTER_WALLET: ${MASTER_WALLET}
+      MASTER_WALLET_KEYPAIR: ${MASTER_WALLET_KEYPAIR}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+    depends_on:
+      postgres-users:
+        condition: service_healthy
+      postgres-messages:
+        condition: service_healthy
+      postgres-nfts:
+        condition: service_healthy
+      postgres-tokens:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres-users-data:
+  postgres-messages-data:
+  postgres-nfts-data:
+  postgres-tokens-data:
+
+networks:
+  default:
+    name: beenzer-network

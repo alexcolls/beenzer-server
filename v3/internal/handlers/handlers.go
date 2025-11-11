@@ -7,14 +7,25 @@ import (
 
 // RegisterUserRoutes registers user-related routes
 func RegisterUserRoutes(router fiber.Router, db *database.DB) {
-	// TODO: Implement all user endpoints from v2
-	// GET /api/users/:pubkey - Get user by public key
-	// POST /api/users - Create new user
-	// PUT /api/users/:pubkey - Update user
-	// GET /api/users/search/:query - Search users
-	// POST /api/users/:pubkey/friends/:friendPubkey - Add friend
-	// DELETE /api/users/:pubkey/friends/:friendPubkey - Remove friend
-	// GET /api/users/:pubkey/friends - Get user friends
+	userHandler := NewUserHandler(db)
+	
+	// User management
+	router.Get("/:pubkey", userHandler.GetUser)
+	router.Post("/", userHandler.CreateUser)
+	router.Put("/:pubkey", userHandler.UpdateUser)
+	
+	// Search and check
+	router.Get("/search/:query", userHandler.SearchUsers)
+	router.Get("/check/:username", userHandler.CheckUsername)
+	router.Get("/:pubkey/new", userHandler.CheckNewUser)
+	
+	// Friends
+	router.Post("/:pubkey/friends/:friendPubkey", userHandler.AddFriend)
+	router.Delete("/:pubkey/friends/:friendPubkey", userHandler.RemoveFriend)
+	router.Get("/:pubkey/friends", userHandler.GetUserFriends)
+	
+	// Logs
+	router.Get("/:pubkey/logs", userHandler.GetUserLogs)
 }
 
 // RegisterMessageRoutes registers message-related routes
